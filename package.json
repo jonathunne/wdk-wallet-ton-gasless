@@ -29,17 +29,18 @@
     "@tetherto/wdk-wallet": "^1.0.0-beta.1",
     "@tetherto/wdk-wallet-ton": "1.0.0-beta.5",
     "@ton-api/client": "0.4.0",
+    "@ton/ton": "15.1.0",
     "bare-node-runtime": "^1.1.4",
-    "@ton/ton": "15.1.0"
+    "wdk-failover-provider": "^1.0.0"
   },
   "devDependencies": {
-    "standard": "17.1.2",
-    "typescript": "5.8.3",
-    "cross-env": "7.0.3",
-    "jest": "29.7.0",
     "@ton-community/assets-sdk": "0.0.5",
     "@ton/sandbox": "0.32.2",
-    "@ton/test-utils": "0.7.0"
+    "@ton/test-utils": "0.7.0",
+    "cross-env": "7.0.3",
+    "jest": "29.7.0",
+    "standard": "17.1.2",
+    "typescript": "5.8.3"
   },
   "overrides": {
     "axios": "1.12.2"

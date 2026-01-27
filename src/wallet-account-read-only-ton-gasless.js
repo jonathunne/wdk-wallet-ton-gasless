@@ -21,6 +21,8 @@ import { Address, beginCell, internal, toNano, storeMessage } from '@ton/ton'
 
 import { TonApiClient } from '@ton-api/client'
 
+import FailoverProvider from 'wdk-failover-provider'
+
 /** @typedef {import('@ton/ton').MessageRelaxed} MessageRelaxed */
 /** @typedef {import('@ton/ton').TonClient} TonClient */
 
@@ -47,7 +49,7 @@ import { TonApiClient } from '@ton-api/client'
 
 /**
  * @typedef {Object} TonGaslessWalletConfig
- * @property {TonClientConfig | TonClient} tonClient - The ton client configuration, or an instance of the {@link TonClient} class.
+ * @property {TonClientConfig | TonClient | Array<TonClientConfig | TonClient>} tonClient - The ton client configuration, or an instance of the {@link TonClient} class.
  * @property {TonApiClientConfig | TonApiClient} tonApiClient - The ton api client configuration, or an instance of the {@link TonApiClient} class.
  * @property {Object} paymasterToken - The paymaster token configuration.
  * @property {string} paymasterToken.address - The address of the paymaster token.
@@ -76,18 +78,45 @@ export default class WalletAccountReadOnlyTonGasless extends WalletAccountReadOn
      */
     this._config = config
 
-    if (config.tonApiClient) {
-      const { tonApiClient } = config
+    /**
+     * The ton client.
+     *
+     * @protected
+     * @type {TonApiClient | undefined}
+     */
+    this._tonApiClient = undefined
 
-      /**
-       * The ton api client.
-       *
-       * @protected
-       * @type {TonApiClient | undefined}
-       */
-      this._tonApiClient = tonApiClient instanceof TonApiClient
-        ? tonApiClient
-        : new TonApiClient({ baseUrl: tonApiClient.url, apiKey: tonApiClient.secretKey })
+    const { tonApiClient, retries = 3 } = config
+
+    if (Array.isArray(tonApiClient)) {
+      this._tonApiClient = tonApiClient
+        .reduce(
+          /**
+           * @param {FailoverProvider<TonClient>} failover
+           * @param {TonClientConfig | TonClient} client
+           */
+          (failover, client) =>
+            failover.addProvider(
+              client instanceof TonApiClient
+                ? client
+                : new TonApiClient({
+                  baseUrl: client.url,
+                  apiKey: client.secretKey
+                })
+            ),
+          new FailoverProvider({ retries })
+        )
+        .initialize()
+    } else if (tonApiClient) {
+      this._tonApiClient =
+        tonApiClient instanceof TonApiClient
+          ? tonApiClient
+          : new TonApiClient({
+            baseUrl: tonApiClient.url,
+            apiKey: tonApiClient.secretKey
+          })
+    } else {
+      this._tonApiClient = undefined
     }
 
     /** @private */
@@ -131,7 +160,9 @@ export default class WalletAccountReadOnlyTonGasless extends WalletAccountReadOn
    * @returns {Promise<Omit<TransactionResult, 'hash'>>} The transaction's quotes.
    */
   async quoteSendTransaction (tx) {
-    throw new Error("Method 'quoteSendTransaction(tx)' not supported on ton gasless.")
+    throw new Error(
+      "Method 'quoteSendTransaction(tx)' not supported on ton gasless."
+    )
   }
 
   /**
@@ -144,7 +175,10 @@ export default class WalletAccountReadOnlyTonGasless extends WalletAccountReadOn
   async quoteTransfer (options, config) {
     const message = await this._getGaslessTokenTransferMessage(options)
 
-    const { commission } = await this._getGaslessTokenTransferRawParams(message, config ?? this._config)
+    const { commission } = await this._getGaslessTokenTransferRawParams(
+      message,
+      config ?? this._config
+    )
 
     return { fee: commission }
   }
@@ -171,7 +205,8 @@ export default class WalletAccountReadOnlyTonGasless extends WalletAccountReadOn
 
     const { relayAddress } = await this._tonApiClient.gasless.gaslessConfig()
 
-    const jettonWalletAddress = await this._tonReadOnlyAccount._getJettonWalletAddress(token)
+    const jettonWalletAddress =
+      await this._tonReadOnlyAccount._getJettonWalletAddress(token)
 
     const queryId = this._tonReadOnlyAccount._generateQueryId()
 
@@ -212,13 +247,11 @@ export default class WalletAccountReadOnlyTonGasless extends WalletAccountReadOn
       {
         walletAddress: wallet.address,
         walletPublicKey: Buffer.from(wallet.publicKey).toString('hex'),
-        messages: [{
-          boc: beginCell()
-            .storeWritable(
-              storeMessage(message)
-            )
-            .endCell()
-        }]
+        messages: [
+          {
+            boc: beginCell().storeWritable(storeMessage(message)).endCell()
+          }
+        ]
       }
     )
 
