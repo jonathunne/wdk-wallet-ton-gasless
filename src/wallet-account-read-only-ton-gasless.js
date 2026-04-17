@@ -17,11 +17,11 @@ import { WalletAccountReadOnly } from '@tetherto/wdk-wallet'
 
 import { WalletAccountReadOnlyTon } from '@tetherto/wdk-wallet-ton'
 
+import FailoverProvider from '@tetherto/wdk-failover-provider'
+
 import { Address, beginCell, internal, toNano, storeMessage } from '@ton/ton'
 
 import { TonApiClient } from '@ton-api/client'
-
-import FailoverProvider from 'wdk-failover-provider'
 
 /** @typedef {import('@ton/ton').MessageRelaxed} MessageRelaxed */
 /** @typedef {import('@ton/ton').TonClient} TonClient */
@@ -89,34 +89,20 @@ export default class WalletAccountReadOnlyTonGasless extends WalletAccountReadOn
     const { tonApiClient, retries = 3 } = config
 
     if (Array.isArray(tonApiClient)) {
-      this._tonApiClient = tonApiClient
-        .reduce(
-          /**
-           * @param {FailoverProvider<TonClient>} failover
-           * @param {TonClientConfig | TonClient} client
-           */
-          (failover, client) =>
-            failover.addProvider(
-              client instanceof TonApiClient
-                ? client
-                : new TonApiClient({
-                  baseUrl: client.url,
-                  apiKey: client.secretKey
-                })
-            ),
-          new FailoverProvider({ retries })
-        )
-        .initialize()
+      if (tonApiClient.length > 0) {
+        const failoverProvider = new FailoverProvider({ retries })
+        for (const entry of tonApiClient) {
+          const option = entry instanceof TonApiClient
+            ? entry
+            : new TonApiClient({ endpoint: entry.url, apiKey: entry.secretKey })
+          failoverProvider.addProvider(option)
+        }
+        this._tonApiClient = failoverProvider.initialize()
+      }
     } else if (tonApiClient) {
-      this._tonApiClient =
-        tonApiClient instanceof TonApiClient
-          ? tonApiClient
-          : new TonApiClient({
-            baseUrl: tonApiClient.url,
-            apiKey: tonApiClient.secretKey
-          })
-    } else {
-      this._tonApiClient = undefined
+      this._tonApiClient = tonApiClient instanceof TonApiClient
+        ? tonApiClient
+        : new TonApiClient({ endpoint: tonApiClient.url, apiKey: tonApiClient.secretKey })
     }
 
     /** @private */
