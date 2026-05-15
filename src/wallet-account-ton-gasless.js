@@ -94,6 +94,19 @@ export default class WalletAccountTonGasless extends WalletAccountReadOnlyTonGas
   }
 
   /**
+   * Signs a transaction.
+   *
+   * Not supported on ton gasless: this module only supports gasless token transfers via
+   * the `transfer` method, which relays a signed internal message through the gasless provider.
+   *
+   * @param {TonTransaction} tx - The transaction.
+   * @returns {Promise<never>} Never resolves; always throws.
+   */
+  async signTransaction (tx) {
+    throw new Error("Method 'signTransaction(tx)' not supported on ton gasless.")
+  }
+
+  /**
    * Sends a transaction.
    *
    * @param {TonTransaction} tx -  The transaction.
