@@ -65,14 +65,14 @@ describe('WalletManagerTonGasless', () => {
       const account = await wallet.getAccount()
 
       expect(account).toBeInstanceOf(WalletAccountTonGasless)
-      expect(account.path).toBe("m/44'/607'/0'/0/0")
+      expect(account.path).toBe("m/44'/607'/0'")
     })
 
     test('should return the account at the given index', async () => {
       const account = await wallet.getAccount(3)
 
       expect(account).toBeInstanceOf(WalletAccountTonGasless)
-      expect(account.path).toBe("m/44'/607'/0'/0/3")
+      expect(account.path).toBe("m/44'/607'/3'")
     })
 
     test('should return the same instance for the same index', async () => {
