@@ -200,7 +200,7 @@ export default class WalletAccountReadOnlyTonGasless extends WalletAccountReadOn
 
     const clients = tonApiClients.map((entry) => {
       if (entry instanceof TonApiClient) {
-        if(!tonApiClient) tonApiClient = entry
+        if (!tonApiClient) tonApiClient = entry
         return entry
       }
       return new TonApiClient({ baseUrl: entry.url, apiKey: entry.secretKey })
